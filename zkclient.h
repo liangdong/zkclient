@@ -108,7 +108,7 @@ private:
 	// Delete的zk回调处理
 	static void DeleteCompletion(int rc, const void* data);
 
-	void UpdateSessionState(int state);
+	void UpdateSessionState(zhandle_t* zhandle, int state);
 	void CheckSessionState();
 
 	int64_t GetCurrentMs();

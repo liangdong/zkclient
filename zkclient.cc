@@ -76,6 +76,10 @@ bool ZKClient::Init(const std::string& host, int timeout, SessionExpiredHandler 
 		zoo_set_log_stream(log_fp_);
 	}
 	// zk初始化，除非参数有问题，否则总是可以立即返回
+	//
+	// 存在一个非常罕见的BUG场景：就是zookeeper_init返回赋值到zhandle_之前就完成了到
+	// zookeeper的连接并回调了SessionWatcher，所以在SessionWatcher里一定要注意不要依赖
+	// zhandle_，而是使用SessionWatcher被传入的zhandle参数。
 	zhandle_ = zookeeper_init(host.c_str(), SessionWatcher, timeout, NULL, this, 0);
 	if (!zhandle_) {
 		return false;
@@ -368,15 +372,15 @@ void ZKClient::SessionWatcher(zhandle_t *zh, int type, int state, const char *pa
 	printf("type=%d state=%d\n", type, state);
 
 	ZKClient* zkclient = (ZKClient*)watcher_ctx;
-	zkclient->UpdateSessionState(state);
+	zkclient->UpdateSessionState(zh, state);
 }
 
-void ZKClient::UpdateSessionState(int state) {
+void ZKClient::UpdateSessionState(zhandle_t* zhandle, int state) {
 	pthread_mutex_lock(&state_mutex_);
 	session_state_ = state;
 	// 连接建立，记录协商后的会话过期时间，唤醒init函数（只有第一次有实际作用）
 	if (state == ZOO_CONNECTED_STATE) {
-		session_timeout_ = zoo_recv_timeout(zhandle_);
+		session_timeout_ = zoo_recv_timeout(zhandle);
 		// printf("session_timeout=%ld\n", session_timeout_);
 		pthread_cond_signal(&state_cond_);
 	} else {	// 连接异常，记录下异常开始时间，用于计算会话是否过期
