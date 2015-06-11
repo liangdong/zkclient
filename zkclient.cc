@@ -281,6 +281,79 @@ void ZKClient::ExistWatcher(zhandle_t* zh, int type, int state, const char* path
 	delete context;
 }
 
+bool ZKClient::Create(const std::string& path, const std::string& value, int flags, CreateHandler handler, void* context) {
+	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this, false);
+	watch_ctx->create_handler = handler;
+
+	int rc = zoo_acreate(zhandle_, path.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, flags, CreateCompletion, watch_ctx);
+	return rc == ZOK ? true : false;
+}
+
+void ZKClient::CreateCompletion(int rc, const char* value, const void* data) {
+	assert(rc == ZOK || rc == ZNODEEXISTS || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZNOCHILDRENFOREPHEMERALS);
+
+	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
+	if (rc == ZOK) {
+		watch_ctx->create_handler(kZKSucceed, watch_ctx->path, value, watch_ctx->context);
+	} else if (rc == ZNONODE) {
+		watch_ctx->create_handler(kZKNotExist, watch_ctx->path, "", watch_ctx->context);
+	} else if (rc == ZNODEEXISTS) {
+		watch_ctx->create_handler(kZKExisted, watch_ctx->path, "", watch_ctx->context);
+	} else {
+		watch_ctx->create_handler(kZKError, watch_ctx->path, "", watch_ctx->context);
+	}
+	delete watch_ctx;
+}
+
+bool ZKClient::Set(const std::string& path, const std::string& value, SetHandler handler, void* context) {
+	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this, false);
+	watch_ctx->set_handler = handler;
+
+	int rc = zoo_aset(zhandle_, path.c_str(), value.c_str(), value.size(), -1, SetCompletion, watch_ctx);
+	return rc == ZOK ? true : false;
+}
+
+void ZKClient::SetCompletion(int rc, const struct Stat* stat, const void* data) {
+	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZBADVERSION ||
+			rc == ZNOAUTH || rc == ZNONODE);
+
+	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
+	if (rc == ZOK) {
+		watch_ctx->set_handler(kZKSucceed, watch_ctx->path, stat, watch_ctx->context);
+	} else if (rc == ZNONODE) {
+		watch_ctx->set_handler(kZKNotExist, watch_ctx->path, NULL, watch_ctx->context);
+	} else {
+		watch_ctx->set_handler(kZKError, watch_ctx->path, NULL, watch_ctx->context);
+	}
+	delete watch_ctx;
+}
+
+bool ZKClient::Delete(const std::string& path, DeleteHandler handler, void* context) {
+	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this, false);
+	watch_ctx->delete_handler = handler;
+
+	int rc = zoo_adelete(zhandle_, path.c_str(), -1, DeleteCompletion, watch_ctx);
+	return rc == ZOK ? true : false;
+}
+
+void ZKClient::DeleteCompletion(int rc, const void* data) {
+	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZBADVERSION ||
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZNOTEMPTY);
+
+	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
+	if (rc == ZOK) {
+		watch_ctx->delete_handler(kZKSucceed, watch_ctx->path, watch_ctx->context);
+	} else if (rc == ZNONODE) {
+		watch_ctx->delete_handler(kZKNotExist, watch_ctx->path, watch_ctx->context);
+	} else if (rc == ZNOTEMPTY) {
+		watch_ctx->delete_handler(kZKNotEmpty, watch_ctx->path, watch_ctx->context);
+	} else {
+		watch_ctx->delete_handler(kZKError, watch_ctx->path, watch_ctx->context);
+	}
+	delete watch_ctx;
+}
+
 void ZKClient::DefaultSessionExpiredHandler(void* context) {
 	exit(0);
 }

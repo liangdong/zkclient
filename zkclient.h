@@ -18,17 +18,27 @@
 class ZKClient;
 
 enum ZKErrorCode {
-	kZKSucceed= 0, // 操作成功
-	kZKNotExist, // 节点不存在
-	kZKError, // 请求失败, 注册的watch会被取消
-	kZKDeleted, // 节点删除
-	kZKChanged, // 节点数据变动
+	kZKSucceed= 0, // 操作成功，watch继续生效
+	kZKNotExist, // 节点不存在，对于exist操作watch继续生效，其他操作均失效
+	kZKError, // 请求失败, watch失效
+	kZKDeleted, // 节点删除，watch失效
+	kZKExisted, // 节点已存在
+	kZKNotEmpty // 节点有子节点
 };
+
+// 节点类型引用zookeeper原生定义
+//enum ZKNodeType {
+//	ZOO_EPHEMERAL,
+//	ZOO_SEQUENCE,
+//};
 
 typedef void (*SessionExpiredHandler)(void* context);
 typedef void (*GetNodeHandler)(ZKErrorCode errcode, const std::string& path, const char* value, int value_len, void* context);
 typedef void (*GetChildrenHandler)(ZKErrorCode errcode, const std::string& path, int count, char** data, void* context);
 typedef void (*ExistHandler)(ZKErrorCode errcode, const std::string& path, const struct Stat* stat, void* context);
+typedef void (*CreateHandler)(ZKErrorCode errcode, const std::string& path, const std::string& value, void* context);
+typedef void (*SetHandler)(ZKErrorCode errcode, const std::string& path, const struct Stat* stat, void* context);
+typedef void (*DeleteHandler)(ZKErrorCode errcode, const std::string& path, void* context);
 
 struct ZKWatchContext {
 	ZKWatchContext(const std::string& path, void* context, ZKClient* zkclient, bool watch);
@@ -41,6 +51,9 @@ struct ZKWatchContext {
 		GetNodeHandler getnode_handler;
 		GetChildrenHandler getchildren_handler;
 		ExistHandler exist_handler;
+		CreateHandler create_handler;
+		SetHandler set_handler;
+		DeleteHandler delete_handler;
 	};
 };
 
@@ -58,6 +71,12 @@ public:
 	bool GetChildren(const std::string& path, GetChildrenHandler handler, void* context, bool watch = false);
 
 	bool Exist(const std::string& path, ExistHandler handler, void* context, bool watch = false);
+
+	bool Create(const std::string& path, const std::string& value, int flags, CreateHandler handler, void* context);
+
+	bool Set(const std::string& path, const std::string& value, SetHandler handler, void* context);
+
+	bool Delete(const std::string& path, DeleteHandler handler, void* context);
 
 private:
 	static void NewInstance();
@@ -79,6 +98,15 @@ private:
 	// Exist的zk回调处理
 	static void ExistCompletion(int rc, const struct Stat* stat, const void* data);
 	static void ExistWatcher(zhandle_t* zh, int type, int state, const char* path, void* watcher_ctx);
+
+	// Create的zk回调处理
+	static void CreateCompletion(int rc, const char* value, const void* data);
+
+	// Set的zk回调处理
+	static void SetCompletion(int rc, const struct Stat* stat, const void* data);
+
+	// Delete的zk回调处理
+	static void DeleteCompletion(int rc, const void* data);
 
 	void UpdateSessionState(int state);
 	void CheckSessionState();

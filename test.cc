@@ -45,6 +45,40 @@ void TestExistHandler(ZKErrorCode errcode, const std::string& path, const struct
 	}
 }
 
+void TestCreateHandler(ZKErrorCode errcode, const std::string& path, const std::string& value, void* context) {
+	if (errcode == kZKSucceed) {
+		printf("TestCreateHandler-[kZKSucceed] path=%s value=%s\n", path.c_str(), value.c_str());
+	} else if (errcode == kZKError) {
+		printf("TestCreateHandler-[kZKError] path=%s\n", path.c_str());
+	} else if (errcode == kZKNotExist) {
+		printf("TestCreateHandler-[kZKNotExist] path=%s\n", path.c_str());
+	} else if (errcode == kZKExisted) {
+		printf("TestCreateHandler-[kZKExisted] path=%s\n", path.c_str());
+	}
+}
+
+void TestSetHandler(ZKErrorCode errcode, const std::string& path, const struct Stat* stat, void* context) {
+	if (errcode == kZKSucceed) {
+		printf("TestSetHandler-[kZKSucceed] path=%s version=%d\n", path.c_str(), stat->version);
+	} else if (errcode == kZKError) {
+		printf("TestSetHandler-[kZKError] path=%s\n", path.c_str());
+	} else if (errcode == kZKNotExist) {
+		printf("TestSetHandler-[kZKNotExist] path=%s\n", path.c_str());
+	}
+}
+
+void TestDeleteHandler(ZKErrorCode errcode, const std::string& path, void* context) {
+	if (errcode == kZKSucceed) {
+		printf("TestDeleteHandler-[kZKSucceed] path=%s\n", path.c_str());
+	} else if (errcode == kZKError) {
+		printf("TestDeleteHandler-[kZKError] path=%s\n", path.c_str());
+	} else if (errcode == kZKNotExist) {
+		printf("TestDeleteHandler-[kZKNotExist] path=%s\n", path.c_str());
+	} else if (errcode == kZKNotEmpty) {
+		printf("TestDeleteHandler-[kZKNotEmpty] path=%s\n", path.c_str());
+	}
+}
+
 int main(int argc, char** argv) {
 	ZKClient& zkclient = ZKClient::GetInstance();
 	if (!zkclient.Init("127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002", 10000)) {
@@ -67,6 +101,24 @@ int main(int argc, char** argv) {
 	succeed = zkclient.Exist("/test", TestExistHandler, NULL, true);
 	if (!succeed) {
 		fprintf(stderr, "ZKClient failed to Exist...\n");
+		return -1;
+	}
+
+	succeed = zkclient.Create("/test/node-", "HELLO WORLD", ZOO_EPHEMERAL | ZOO_SEQUENCE, TestCreateHandler, NULL);
+	if (!succeed) {
+		fprintf(stderr, "ZKClient failed to Create...\n");
+		return -1;
+	}
+
+	succeed = zkclient.Set("/test", "set by zkclient~~", TestSetHandler, NULL);
+	if (!succeed) {
+		fprintf(stderr, "ZKClient failed to Set...\n");
+		return -1;
+	}
+
+	succeed = zkclient.Delete("/test", TestDeleteHandler, NULL);
+	if (!succeed) {
+		fprintf(stderr, "ZKClient failed to Delete...\n");
 		return -1;
 	}
 
