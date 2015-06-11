@@ -42,15 +42,15 @@ ZKClient::ZKClient()
 }
 
 ZKClient::~ZKClient() {
+	if (session_check_running_) { // 终止会话检测线程
+		session_check_running_ = false;
+		pthread_join(session_check_tid_, NULL);
+	}
 	if (zhandle_) {
 		zookeeper_close(zhandle_);
 	}
 	if (log_fp_) {
 		fclose(log_fp_);
-	}
-	if (session_check_running_) { // 终止会话检测线程
-		session_check_running_ = false;
-		pthread_join(session_check_tid_, NULL);
 	}
 	pthread_cond_destroy(&state_cond_);
 	pthread_mutex_destroy(&state_mutex_);
