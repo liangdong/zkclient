@@ -113,7 +113,7 @@ bool ZKClient::Init(const std::string& host, int timeout, SessionExpiredHandler 
 void ZKClient::GetNodeDataCompletion(int rc, const char* value, int value_len,
         const struct Stat* stat, const void* data) {
 	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
-			rc == ZNOAUTH || rc == ZNONODE);
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZCLOSING);
 
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 
@@ -182,7 +182,7 @@ bool ZKClient::GetChildren(const std::string& path, GetChildrenHandler handler, 
 
 void ZKClient::GetChildrenStringCompletion(int rc, const struct String_vector* strings, const void* data) {
 	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
-			rc == ZNOAUTH || rc == ZNONODE);
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZCLOSING);
 
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 
@@ -241,7 +241,7 @@ bool ZKClient::Exist(const std::string& path, ExistHandler handler, void* contex
 
 void ZKClient::ExistCompletion(int rc, const struct Stat* stat, const void* data) {
 	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
-			rc == ZNOAUTH || rc == ZNONODE);
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZCLOSING);
 
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 
@@ -291,7 +291,7 @@ bool ZKClient::Create(const std::string& path, const std::string& value, int fla
 
 void ZKClient::CreateCompletion(int rc, const char* value, const void* data) {
 	assert(rc == ZOK || rc == ZNODEEXISTS || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
-			rc == ZNOAUTH || rc == ZNONODE || rc == ZNOCHILDRENFOREPHEMERALS);
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZNOCHILDRENFOREPHEMERALS || rc == ZCLOSING);
 
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 	if (rc == ZOK) {
@@ -316,7 +316,7 @@ bool ZKClient::Set(const std::string& path, const std::string& value, SetHandler
 
 void ZKClient::SetCompletion(int rc, const struct Stat* stat, const void* data) {
 	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZBADVERSION ||
-			rc == ZNOAUTH || rc == ZNONODE);
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZCLOSING);
 
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 	if (rc == ZOK) {
@@ -339,7 +339,7 @@ bool ZKClient::Delete(const std::string& path, DeleteHandler handler, void* cont
 
 void ZKClient::DeleteCompletion(int rc, const void* data) {
 	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZBADVERSION ||
-			rc == ZNOAUTH || rc == ZNONODE || rc == ZNOTEMPTY);
+			rc == ZNOAUTH || rc == ZNONODE || rc == ZNOTEMPTY || rc == ZCLOSING);
 
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 	if (rc == ZOK) {
