@@ -26,16 +26,21 @@ enum ZKErrorCode {
 };
 
 typedef void (*SessionExpiredHandler)(void* context);
-typedef void (*GetNodeHandler)(ZKErrorCode errcode, const std::string& path, const char* value, int value_len);
+typedef void (*GetNodeHandler)(ZKErrorCode errcode, const std::string& path, const char* value, int value_len, void* context);
+typedef void (*GetChildrenHandler)(ZKErrorCode errcode, const std::string& path, int count, char** data, void* context);
+typedef void (*ExistHandler)(ZKErrorCode errcode, const std::string& path, const struct Stat* stat, void* context);
 
 struct ZKWatchContext {
-	ZKWatchContext(const std::string& path, void* context, ZKClient* zkclient);
+	ZKWatchContext(const std::string& path, void* context, ZKClient* zkclient, bool watch);
 
+	bool watch;
 	void* context;
 	std::string path;
 	ZKClient* zkclient;
 	union {
 		GetNodeHandler getnode_handler;
+		GetChildrenHandler getchildren_handler;
+		ExistHandler exist_handler;
 	};
 };
 
@@ -50,6 +55,9 @@ public:
 
 	bool GetNode(const std::string& path, GetNodeHandler handler, void* context, bool watch = false);
 
+	bool GetChildren(const std::string& path, GetChildrenHandler handler, void* context, bool watch = false);
+
+	bool Exist(const std::string& path, ExistHandler handler, void* context, bool watch = false);
 
 private:
 	static void NewInstance();
@@ -63,6 +71,14 @@ private:
 	static void GetNodeDataCompletion(int rc, const char* value, int value_len,
 	        const struct Stat* stat, const void* data);
 	static void GetNodeWatcher(zhandle_t* zh, int type, int state, const char* path,void* watcher_ctx);
+
+	// GetChildren的zk回调处理
+	static void GetChildrenStringCompletion(int rc, const struct String_vector* strings, const void* data);
+	static void GetChildrenWatcher(zhandle_t* zh, int type, int state, const char* path,void* watcher_ctx);
+
+	// Exist的zk回调处理
+	static void ExistCompletion(int rc, const struct Stat* stat, const void* data);
+	static void ExistWatcher(zhandle_t* zh, int type, int state, const char* path, void* watcher_ctx);
 
 	void UpdateSessionState(int state);
 	void CheckSessionState();

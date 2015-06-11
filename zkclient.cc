@@ -13,7 +13,8 @@
 
 pthread_once_t ZKClient::new_instance_once_ = PTHREAD_ONCE_INIT;
 
-ZKWatchContext::ZKWatchContext(const std::string& path, void* context, ZKClient* zkclient) {
+ZKWatchContext::ZKWatchContext(const std::string& path, void* context, ZKClient* zkclient, bool watch) {
+	this->watch = watch;
 	this->path = path;
 	this->context = context;
 	this->zkclient = zkclient;
@@ -111,16 +112,22 @@ bool ZKClient::Init(const std::string& host, int timeout, SessionExpiredHandler 
 
 void ZKClient::GetNodeDataCompletion(int rc, const char* value, int value_len,
         const struct Stat* stat, const void* data) {
+	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
+			rc == ZNOAUTH || rc == ZNONODE);
+
 	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
 
 	if (rc == ZOK) {
-		watch_ctx->getnode_handler(kZKSucceed, watch_ctx->path, value, value_len);
+		watch_ctx->getnode_handler(kZKSucceed, watch_ctx->path, value, value_len, watch_ctx->context);
+		if (!watch_ctx->watch) { // 没有注册watch
+			delete watch_ctx;
+		}
 		return;
 	}
 	if (rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZNOAUTH) {
-		watch_ctx->getnode_handler(kZKError, watch_ctx->path, value, value_len);
+		watch_ctx->getnode_handler(kZKError, watch_ctx->path, value, value_len, watch_ctx->context);
 	} else {
-		watch_ctx->getnode_handler(kZKNotExist, watch_ctx->path, value, value_len);
+		watch_ctx->getnode_handler(kZKNotExist, watch_ctx->path, value, value_len, watch_ctx->context);
 	}
 	// 只要不是ZOK，那么zk都不会触发Watch事件了
 	delete watch_ctx;
@@ -137,7 +144,7 @@ void ZKClient::GetNodeWatcher(zhandle_t* zh, int type, int state, const char* pa
 	}
 
 	if (type == ZOO_DELETED_EVENT) {
-		context->getnode_handler(kZKDeleted, context->path, NULL, 0);
+		context->getnode_handler(kZKDeleted, context->path, NULL, 0, context->context);
 		delete context;
 	} else {
 		if (type == ZOO_CHANGED_EVENT) {
@@ -148,7 +155,7 @@ void ZKClient::GetNodeWatcher(zhandle_t* zh, int type, int state, const char* pa
 		} else if (type == ZOO_NOTWATCHING_EVENT) {
 			// nothing to do
 		}
-		context->getnode_handler(kZKError, context->path, NULL, 0);
+		context->getnode_handler(kZKError, context->path, NULL, 0, context->context);
 		delete context;
 	}
 }
@@ -156,11 +163,122 @@ void ZKClient::GetNodeWatcher(zhandle_t* zh, int type, int state, const char* pa
 bool ZKClient::GetNode(const std::string& path, GetNodeHandler handler, void* context, bool watch) {
 	watcher_fn watcher = watch ? GetNodeWatcher : NULL;
 
-	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this);
+	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this, watch);
 	watch_ctx->getnode_handler = handler;
 
 	int rc = zoo_awget(zhandle_, path.c_str(), watcher, watch_ctx, GetNodeDataCompletion, watch_ctx);
 	return rc == ZOK ? true : false;
+}
+
+bool ZKClient::GetChildren(const std::string& path, GetChildrenHandler handler, void* context, bool watch) {
+	watcher_fn watcher = watch ? GetChildrenWatcher : NULL;
+
+	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this, watch);
+	watch_ctx->getchildren_handler = handler;
+
+	int rc = zoo_awget_children(zhandle_, path.c_str(), watcher, watch_ctx, GetChildrenStringCompletion, watch_ctx);
+	return rc == ZOK ? true : false;
+}
+
+void ZKClient::GetChildrenStringCompletion(int rc, const struct String_vector* strings, const void* data) {
+	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
+			rc == ZNOAUTH || rc == ZNONODE);
+
+	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
+
+	if (rc == ZOK) {
+		watch_ctx->getchildren_handler(kZKSucceed, watch_ctx->path, strings->count, strings->data, watch_ctx->context);
+		if (!watch_ctx->watch) { // 没有注册watch
+			delete watch_ctx;
+		}
+		return;
+	}
+	if (rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZNOAUTH) {
+		watch_ctx->getchildren_handler(kZKError, watch_ctx->path, 0, NULL, watch_ctx->context);
+	} else {
+		watch_ctx->getchildren_handler(kZKNotExist, watch_ctx->path, 0, NULL, watch_ctx->context);
+	}
+	// 只要不是ZOK，那么zk都不会触发Watch事件了
+	delete watch_ctx;
+}
+
+void ZKClient::GetChildrenWatcher(zhandle_t* zh, int type, int state, const char* path,void* watcher_ctx) {
+	assert(type == ZOO_DELETED_EVENT || type == ZOO_CHILD_EVENT
+			|| type == ZOO_NOTWATCHING_EVENT || type == ZOO_SESSION_EVENT);
+
+	ZKWatchContext* context = (ZKWatchContext*)watcher_ctx;
+
+	if (type == ZOO_SESSION_EVENT) { // 跳过会话事件,由zk handler的watcher进行处理
+		return;
+	}
+
+	if (type == ZOO_DELETED_EVENT) {
+		context->getchildren_handler(kZKDeleted, context->path, 0, NULL, context->context);
+		delete context;
+	} else {
+		if (type == ZOO_CHILD_EVENT) {
+			int rc = zoo_awget_children(zh, context->path.c_str(), GetChildrenWatcher, context, GetChildrenStringCompletion, context);
+			if (rc == ZOK) {
+				return;
+			}
+		} else if (type == ZOO_NOTWATCHING_EVENT) {
+			// nothing to do
+		}
+		context->getchildren_handler(kZKError, context->path, 0, NULL, context->context);
+		delete context;
+	}
+}
+
+bool ZKClient::Exist(const std::string& path, ExistHandler handler, void* context, bool watch) {
+	watcher_fn watcher = watch ? ExistWatcher : NULL;
+
+	ZKWatchContext* watch_ctx = new ZKWatchContext(path, context, this, watch);
+	watch_ctx->exist_handler = handler;
+
+	int rc = zoo_awexists(zhandle_, path.c_str(), watcher, watch_ctx, ExistCompletion, watch_ctx);
+	return rc == ZOK ? true : false;
+}
+
+void ZKClient::ExistCompletion(int rc, const struct Stat* stat, const void* data) {
+	assert(rc == ZOK || rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT ||
+			rc == ZNOAUTH || rc == ZNONODE);
+
+	const ZKWatchContext* watch_ctx = (const ZKWatchContext*)data;
+
+	if (rc == ZOK || rc == ZNONODE) {
+		watch_ctx->exist_handler(rc == ZOK ? kZKSucceed : kZKNotExist, watch_ctx->path, stat, watch_ctx->context);
+		if (!watch_ctx->watch) { // 没有注册watch
+			delete watch_ctx;
+		}
+		return;
+	}
+	watch_ctx->exist_handler(kZKError, watch_ctx->path, NULL, watch_ctx->context);
+	// 只要不是ZOK，那么zk都不会触发Watch事件了
+	delete watch_ctx;
+}
+
+void ZKClient::ExistWatcher(zhandle_t* zh, int type, int state, const char* path, void* watcher_ctx) {
+	assert(type == ZOO_DELETED_EVENT || type == ZOO_CREATED_EVENT || type == ZOO_CHANGED_EVENT
+			|| type == ZOO_NOTWATCHING_EVENT || type == ZOO_SESSION_EVENT);
+
+	ZKWatchContext* context = (ZKWatchContext*)watcher_ctx;
+
+	if (type == ZOO_SESSION_EVENT) { // 跳过会话事件,由zk handler的watcher进行处理
+		return;
+	}
+
+	if (type == ZOO_NOTWATCHING_EVENT) {
+		context->exist_handler(kZKError, context->path, NULL, context->context);
+	} else if (type == ZOO_DELETED_EVENT) {
+		context->exist_handler(kZKDeleted, context->path, NULL, context->context);
+	} else if (type == ZOO_CREATED_EVENT || type == ZOO_CHANGED_EVENT) { // 节点创建或者元信息变动,重新获取通知用户
+		int rc = zoo_awexists(zh, context->path.c_str(), ExistWatcher, context, ExistCompletion, context);
+		if (rc == ZOK) {
+			return;
+		}
+		context->exist_handler(kZKError, context->path, NULL, context->context);
+	}
+	delete context;
 }
 
 void ZKClient::DefaultSessionExpiredHandler(void* context) {
