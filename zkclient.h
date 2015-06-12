@@ -15,6 +15,15 @@
 #include <map>
 #include "zookeeper.h"
 
+/**
+ *		对于注册了Watch的操作，严格根据下列返回码来区分watch是否失效。
+ *
+ *		一旦Watch失效，用户需自行决定是否，以及何时发起新的操作，ZKClient内部不会帮用户做决策，
+ *		尤其体现在一个操作因为Connection loss或者Connection timeout错误码而失败的情况下，ZKClient
+ *		也并没有做什么特殊处理，而是直接反馈给用户自己决策是否以及何时发起下一次操作。
+ *
+ */
+
 class ZKClient;
 
 enum ZKErrorCode {
@@ -22,8 +31,8 @@ enum ZKErrorCode {
 	kZKNotExist, // 节点不存在，对于exist操作watch继续生效，其他操作均失效
 	kZKError, // 请求失败, watch失效
 	kZKDeleted, // 节点删除，watch失效
-	kZKExisted, // 节点已存在
-	kZKNotEmpty // 节点有子节点
+	kZKExisted, // 节点已存在，Create失败
+	kZKNotEmpty // 节点有子节点，Delete失败
 };
 
 // 节点类型引用zookeeper原生定义
