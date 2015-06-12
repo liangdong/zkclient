@@ -383,9 +383,12 @@ void ZKClient::UpdateSessionState(zhandle_t* zhandle, int state) {
 		session_timeout_ = zoo_recv_timeout(zhandle);
 		// printf("session_timeout=%ld\n", session_timeout_);
 		pthread_cond_signal(&state_cond_);
-	} else {	// 连接异常，记录下异常开始时间，用于计算会话是否过期
+	} else if (state == ZOO_EXPIRED_SESSION_STATE) {
+		// 会话过期，唤醒init函数
+		pthread_cond_signal(&state_cond_);
+	} else {// 连接异常，记录下异常开始时间，用于计算会话是否过期
 		session_disconnect_ms_ = GetCurrentMs();
-		// printf("disconnect_ms=%ld\n", session_disconnect_ms_);
+		// printf("state=%d disconnect_ms=%ld\n", state, session_disconnect_ms_);
 	}
 	pthread_mutex_unlock(&state_mutex_);
 }
