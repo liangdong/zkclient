@@ -128,10 +128,10 @@ void ZKClient::GetNodeDataCompletion(int rc, const char* value, int value_len,
 		}
 		return;
 	}
-	if (rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZNOAUTH) {
-		watch_ctx->getnode_handler(kZKError, watch_ctx->path, value, value_len, watch_ctx->context);
-	} else {
+	if (rc == ZNONODE) {
 		watch_ctx->getnode_handler(kZKNotExist, watch_ctx->path, value, value_len, watch_ctx->context);
+	} else {
+		watch_ctx->getnode_handler(kZKError, watch_ctx->path, value, value_len, watch_ctx->context);
 	}
 	// 只要不是ZOK，那么zk都不会触发Watch事件了
 	delete watch_ctx;
@@ -197,10 +197,10 @@ void ZKClient::GetChildrenStringCompletion(int rc, const struct String_vector* s
 		}
 		return;
 	}
-	if (rc == ZCONNECTIONLOSS || rc == ZOPERATIONTIMEOUT || rc == ZNOAUTH) {
-		watch_ctx->getchildren_handler(kZKError, watch_ctx->path, 0, NULL, watch_ctx->context);
-	} else {
+	if (rc == ZNONODE) {
 		watch_ctx->getchildren_handler(kZKNotExist, watch_ctx->path, 0, NULL, watch_ctx->context);
+	} else {
+		watch_ctx->getchildren_handler(kZKError, watch_ctx->path, 0, NULL, watch_ctx->context);
 	}
 	// 只要不是ZOK，那么zk都不会触发Watch事件了
 	delete watch_ctx;
