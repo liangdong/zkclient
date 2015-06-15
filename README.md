@@ -4,7 +4,7 @@ c++ wrapper for libzookeeper async api
 保留了一些assert, 用于在生产环境中发现一些没有预期到的state/event，不过从zookeeper c client源码来看，其他未assert的状态不应出现。
 
 
-** 搞清楚zookeeper client的一些细节，需要自己看zookeeper client源码，重点关注几个问题：**
+**搞清楚zookeeper client的一些细节，需要自己看zookeeper client源码，重点关注几个问题:**
 
 * 1，async接口回调失败错误码，watch是否可能生效？
 答：否，async接口的watch虽然提交给了server，但最终决定是否生效的决定点在于response里的错误码，只有response里标记ZOK，此时才会active这个watch。
