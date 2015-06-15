@@ -364,13 +364,13 @@ void ZKClient::DefaultSessionExpiredHandler(void* context) {
 
 void ZKClient::SessionWatcher(zhandle_t *zh, int type, int state, const char *path, void *watcher_ctx) {
 	assert(type == ZOO_SESSION_EVENT);
-
+/*
 	printf("connecting=%d assoting=%d connected=%d auth_failed=%d expired_sesssion=%d\n",
 			ZOO_CONNECTING_STATE, ZOO_ASSOCIATING_STATE,
 			ZOO_CONNECTED_STATE, ZOO_AUTH_FAILED_STATE, ZOO_EXPIRED_SESSION_STATE);
 
 	printf("type=%d state=%d\n", type, state);
-
+*/
 	ZKClient* zkclient = (ZKClient*)watcher_ctx;
 	zkclient->UpdateSessionState(zh, state);
 }
