@@ -42,7 +42,8 @@ void NodeGetChildrenHandler(ZKErrorCode errcode, const std::string& path, int co
 	} else if (errcode == kZKDeleted) {
 		assert(false);
 	} else if (errcode == kZKError) {
-		assert(ZKClient::GetInstance().GetChildren("/leader_follower", NodeGetChildrenHandler, NULL, true));
+		// 不需要检查返回值，除非SESSION_EXPIRED才会失败，那也会被回调退出程序的
+		ZKClient::GetInstance().GetChildren("/leader_follower", NodeGetChildrenHandler, NULL, true);
 	} else if (errcode == kZKNotExist) {
 		assert(false);
 	}
@@ -52,9 +53,11 @@ void NodeCreateHandler(ZKErrorCode errcode, const std::string& path, const std::
 	if (errcode == kZKSucceed) {
 		node = value;
 		printf("I'm online - %s\n", node.c_str());
-		assert(ZKClient::GetInstance().GetChildren("/leader_follower", NodeGetChildrenHandler, NULL, true));
+		// 不需要检查返回值，除非SESSION_EXPIRED才会失败，那也会被回调退出程序的
+		ZKClient::GetInstance().GetChildren("/leader_follower", NodeGetChildrenHandler, NULL, true);
 	} else if (errcode == kZKError) {
-		assert(ZKClient::GetInstance().Create("/leader_follower/node-", "HELLO WORLD", ZOO_EPHEMERAL | ZOO_SEQUENCE, NodeCreateHandler, NULL));
+		// 不需要检查返回值，除非SESSION_EXPIRED才会失败，那也会被回调退出程序的
+		ZKClient::GetInstance().Create("/leader_follower/node-", "HELLO WORLD", ZOO_EPHEMERAL | ZOO_SEQUENCE, NodeCreateHandler, NULL);
 	} else if (errcode == kZKNotExist) {
 		fprintf(stderr, "You need to create /leader-follower\n");
 		exit(-1);
@@ -70,7 +73,8 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
-	assert(zkclient.Create("/leader_follower/node-", "HELLO WORLD", ZOO_EPHEMERAL | ZOO_SEQUENCE, NodeCreateHandler, NULL));
+	// 不需要检查返回值，除非SESSION_EXPIRED才会失败，那也会被回调退出程序的
+	zkclient.Create("/leader_follower/node-", "HELLO WORLD", ZOO_EPHEMERAL | ZOO_SEQUENCE, NodeCreateHandler, NULL);
 
 	while (true) {
 		sleep(1);
