@@ -35,11 +35,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=8b729e7b1567d817173cb813b575eab1  COMAKE
+COMAKE_MD5=9e0d243d91d01ae64781b2695859b06e  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check test 
+all:comake2_makefile_check test leader_follower 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -61,8 +61,12 @@ clean:ccpclean
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mclean[0m']"
 	rm -rf test
 	rm -rf ./output/bin/test
-	rm -rf test_zkclient.o
+	rm -rf leader_follower
+	rm -rf ./output/bin/leader_follower
 	rm -rf test_test.o
+	rm -rf test_zkclient.o
+	rm -rf leader_follower_leader_follower.o
+	rm -rf leader_follower_zkclient.o
 
 .PHONY:dist
 dist:
@@ -81,25 +85,47 @@ love:
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mlove[0m']"
 	@echo "make love done"
 
-test:test_zkclient.o \
-  test_test.o
+test:test_test.o \
+  test_zkclient.o
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest[0m']"
-	$(CXX) test_zkclient.o \
-  test_test.o -Xlinker "-("  ../third-64/zookeeper/lib/libzookeeper_mt.a \
+	$(CXX) test_test.o \
+  test_zkclient.o -Xlinker "-("  ../third-64/zookeeper/lib/libzookeeper_mt.a \
   ../third-64/zookeeper/lib/libzookeeper_st.a -lpthread \
   -lcrypto \
   -lrt -Xlinker "-)" -o test
 	mkdir -p ./output/bin
 	cp -f --link test ./output/bin
 
+leader_follower:leader_follower_leader_follower.o \
+  leader_follower_zkclient.o
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mleader_follower[0m']"
+	$(CXX) leader_follower_leader_follower.o \
+  leader_follower_zkclient.o -Xlinker "-("  ../third-64/zookeeper/lib/libzookeeper_mt.a \
+  ../third-64/zookeeper/lib/libzookeeper_st.a -lpthread \
+  -lcrypto \
+  -lrt -Xlinker "-)" -o leader_follower
+	mkdir -p ./output/bin
+	cp -f --link leader_follower ./output/bin
+
+test_test.o:test.cc \
+  zkclient.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest_test.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test_test.o test.cc
+
 test_zkclient.o:zkclient.cc \
   zkclient.h
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest_zkclient.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test_zkclient.o zkclient.cc
 
-test_test.o:test.cc
-	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest_test.o[0m']"
-	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test_test.o test.cc
+leader_follower_leader_follower.o:leader_follower.cc \
+  zkclient.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mleader_follower_leader_follower.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o leader_follower_leader_follower.o leader_follower.cc
+
+leader_follower_zkclient.o:zkclient.cc \
+  zkclient.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mleader_follower_zkclient.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o leader_follower_zkclient.o zkclient.cc
 
 endif #ifeq ($(shell uname -m),x86_64)
 

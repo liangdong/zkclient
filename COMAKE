@@ -43,11 +43,9 @@ CONFIGS('third-64/zookeeper@base')
 #CONFIGS_32('lib2/ullib')
 #CONFIGS_64('lib2-64/ullib')
 
-user_sources='zkclient.cc test.cc'
-user_headers='zkclient.h'
-
 #可执行文件
-Application('test',Sources(user_sources))
+Application('test',Sources('test.cc zkclient.cc'))
+Application('leader_follower',Sources('leader_follower.cc zkclient.cc'))
 #静态库
 #StaticLibrary('zk',Sources(user_sources),HeaderFiles(user_headers))
 #共享库
