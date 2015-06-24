@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string>
 #include <map>
+#include <vector>
 #include "zookeeper.h"
 
 /**
@@ -75,6 +76,7 @@ public:
 	bool Init(const std::string& host, int timeout, SessionExpiredHandler expired_handler = NULL, void* context = NULL,
 			 bool debug = false, const std::string& zklog = "");
 
+	/* methods below return results asynchronously */
 	bool GetNode(const std::string& path, GetNodeHandler handler, void* context, bool watch = false);
 
 	bool GetChildren(const std::string& path, GetChildrenHandler handler, void* context, bool watch = false);
@@ -86,6 +88,22 @@ public:
 	bool Set(const std::string& path, const std::string& value, SetHandler handler, void* context);
 
 	bool Delete(const std::string& path, DeleteHandler handler, void* context);
+
+	/* methods below will be blocked until result returns */
+	ZKErrorCode GetNodeSync(const std::string& path, char* buffer, int* buffer_len, GetNodeHandler handler = NULL,
+			void* context = NULL, bool watch = false);
+
+	ZKErrorCode GetChildrenSync(const std::string& path, std::vector<std::string>* value, GetChildrenHandler handler = NULL,
+			void* context = NULL, bool watch = false);
+
+	ZKErrorCode ExistSync(const std::string& path, struct Stat* stat = NULL, ExistHandler handler = NULL,
+			void* context = NULL, bool watch = false);
+
+	ZKErrorCode CreateSync(const std::string& path, const std::string& value, int flags, char* path_buffer = NULL, int path_buffer_len = 0);
+
+	ZKErrorCode SetSync(const std::string& path, const std::string& value);
+
+	ZKErrorCode DeleteSync(const std::string& path);
 
 private:
 	static void NewInstance();

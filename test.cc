@@ -122,6 +122,29 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
+	char buffer[1024] = {0};
+	int buffer_len = sizeof(buffer);
+
+	ZKErrorCode errcode = zkclient.GetNodeSync("/test", buffer, &buffer_len, TestGetNodeHandler, NULL, true);
+	printf("GetNodeSync returns %d, value=%.*s\n", errcode, buffer_len, buffer);
+
+	std::vector<std::string> children;
+	errcode = zkclient.GetChildrenSync("/test", &children, TestGetChildrenHandler, NULL, true);
+	printf("GetChildrenSync returns %d, count=%lu\n", errcode, children.size());
+
+	errcode = zkclient.ExistSync("/test", NULL, TestExistHandler, NULL, true);
+	printf("ExistSync returns %d\n", errcode);
+
+	buffer[0] = '\0';
+	errcode = zkclient.CreateSync("/test/node-", "HELLO ZOO", ZOO_EPHEMERAL | ZOO_SEQUENCE, buffer, sizeof(buffer));
+	printf("CreateSync returns %d, path=%s\n", errcode, buffer);
+
+	errcode = zkclient.SetSync("/test", "sync set by zkclient~~~");
+	printf("SetSync returns %d\n", errcode);
+
+	errcode = zkclient.DeleteSync("/test");
+	printf("DeleteSync returns %d\n", errcode);
+
 	while (true) {
 		sleep(1);
 	}

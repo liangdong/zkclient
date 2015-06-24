@@ -358,6 +358,98 @@ void ZKClient::DeleteCompletion(int rc, const void* data) {
 	delete watch_ctx;
 }
 
+ZKErrorCode ZKClient::GetNodeSync(const std::string& path, char* buffer, int* buffer_len, GetNodeHandler handler,
+		void* context, bool watch) {
+	watcher_fn watcher = watch ? GetNodeWatcher : NULL;
+
+	ZKWatchContext* watch_ctx = NULL;
+	if (watch) {
+		watch_ctx = new ZKWatchContext(path, context, this, watch);
+		watch_ctx->getnode_handler = handler;
+	}
+	int rc = zoo_wget(zhandle_, path.c_str(), watcher, watch_ctx, buffer, buffer_len, NULL);
+	if (rc == ZOK) {
+		return kZKSucceed;
+	} else if (rc == ZNONODE) {
+		return kZKNotExist;
+	}
+	return kZKError;
+}
+
+ZKErrorCode ZKClient::GetChildrenSync(const std::string& path, std::vector<std::string>* value, GetChildrenHandler handler,
+		void* context, bool watch) {
+	watcher_fn watcher = watch ? GetChildrenWatcher : NULL;
+
+	ZKWatchContext* watch_ctx = NULL;
+	if (watch) {
+		watch_ctx = new ZKWatchContext(path, context, this, watch);
+		watch_ctx->getchildren_handler = handler;
+	}
+	struct String_vector strings = { 0, NULL };
+	int rc = zoo_wget_children(zhandle_, path.c_str(), watcher, watch_ctx, &strings);
+	if (rc == ZOK) {
+		for (int i = 0; i < strings.count; ++i) {
+			value->push_back(strings.data[i]);
+		}
+		deallocate_String_vector(&strings);
+		return kZKSucceed;
+	} else if (rc == ZNONODE) {
+		return kZKNotExist;
+	}
+	return kZKError;
+}
+
+ZKErrorCode ZKClient::ExistSync(const std::string& path, struct Stat* stat, ExistHandler handler, void* context, bool watch) {
+	watcher_fn watcher = watch ? ExistWatcher : NULL;
+
+	ZKWatchContext* watch_ctx = NULL;
+	if (watch) {
+		watch_ctx = new ZKWatchContext(path, context, this, watch);
+		watch_ctx->exist_handler = handler;
+	}
+	int rc = zoo_wexists(zhandle_, path.c_str(), watcher, watch_ctx, stat);
+	if (rc == ZOK) {
+		return kZKSucceed;
+	} else if (rc == ZNONODE) {
+		return kZKNotExist;
+	}
+	return kZKError;
+}
+
+ZKErrorCode ZKClient::CreateSync(const std::string& path, const std::string& value, int flags, char* path_buffer, int path_buffer_len) {
+	int rc = zoo_create(zhandle_, path.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, flags, path_buffer, path_buffer_len);
+	if (rc == ZOK) {
+		return kZKSucceed;
+	} else if (rc == ZNONODE) {
+		return kZKNotExist;
+	} else if (rc == ZNODEEXISTS) {
+		return kZKExisted;
+	}
+	return kZKError;
+}
+
+ZKErrorCode ZKClient::SetSync(const std::string& path, const std::string& value) {
+	int rc = zoo_set(zhandle_, path.c_str(), value.c_str(), value.size(), -1);
+	if (rc == ZOK) {
+		return kZKSucceed;
+	} else if (rc == ZNONODE) {
+		return kZKNotExist;
+	}
+	return kZKError;
+}
+
+ZKErrorCode ZKClient::DeleteSync(const std::string& path) {
+	int rc = zoo_delete(zhandle_, path.c_str(), -1);
+	if (rc == ZOK) {
+		return kZKSucceed;
+	} else if (rc == ZNONODE) {
+		return kZKNotExist;
+	} else if (rc == ZNOTEMPTY) {
+		return kZKNotEmpty;
+	}
+	return kZKError;
+}
+
 void ZKClient::DefaultSessionExpiredHandler(void* context) {
 	exit(0);
 }
