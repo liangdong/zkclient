@@ -358,7 +358,7 @@ void ZKClient::DeleteCompletion(int rc, const void* data) {
 	delete watch_ctx;
 }
 
-ZKErrorCode ZKClient::GetNodeSync(const std::string& path, char* buffer, int* buffer_len, GetNodeHandler handler,
+ZKErrorCode ZKClient::GetNode(const std::string& path, char* buffer, int* buffer_len, GetNodeHandler handler,
 		void* context, bool watch) {
 	watcher_fn watcher = watch ? GetNodeWatcher : NULL;
 
@@ -376,7 +376,7 @@ ZKErrorCode ZKClient::GetNodeSync(const std::string& path, char* buffer, int* bu
 	return kZKError;
 }
 
-ZKErrorCode ZKClient::GetChildrenSync(const std::string& path, std::vector<std::string>* value, GetChildrenHandler handler,
+ZKErrorCode ZKClient::GetChildren(const std::string& path, std::vector<std::string>* value, GetChildrenHandler handler,
 		void* context, bool watch) {
 	watcher_fn watcher = watch ? GetChildrenWatcher : NULL;
 
@@ -399,7 +399,7 @@ ZKErrorCode ZKClient::GetChildrenSync(const std::string& path, std::vector<std::
 	return kZKError;
 }
 
-ZKErrorCode ZKClient::ExistSync(const std::string& path, struct Stat* stat, ExistHandler handler, void* context, bool watch) {
+ZKErrorCode ZKClient::Exist(const std::string& path, struct Stat* stat, ExistHandler handler, void* context, bool watch) {
 	watcher_fn watcher = watch ? ExistWatcher : NULL;
 
 	ZKWatchContext* watch_ctx = NULL;
@@ -416,7 +416,7 @@ ZKErrorCode ZKClient::ExistSync(const std::string& path, struct Stat* stat, Exis
 	return kZKError;
 }
 
-ZKErrorCode ZKClient::CreateSync(const std::string& path, const std::string& value, int flags, char* path_buffer, int path_buffer_len) {
+ZKErrorCode ZKClient::Create(const std::string& path, const std::string& value, int flags, char* path_buffer, int path_buffer_len) {
 	int rc = zoo_create(zhandle_, path.c_str(), value.c_str(), value.size(), &ZOO_OPEN_ACL_UNSAFE, flags, path_buffer, path_buffer_len);
 	if (rc == ZOK) {
 		return kZKSucceed;
@@ -428,7 +428,7 @@ ZKErrorCode ZKClient::CreateSync(const std::string& path, const std::string& val
 	return kZKError;
 }
 
-ZKErrorCode ZKClient::SetSync(const std::string& path, const std::string& value) {
+ZKErrorCode ZKClient::Set(const std::string& path, const std::string& value) {
 	int rc = zoo_set(zhandle_, path.c_str(), value.c_str(), value.size(), -1);
 	if (rc == ZOK) {
 		return kZKSucceed;
@@ -438,7 +438,7 @@ ZKErrorCode ZKClient::SetSync(const std::string& path, const std::string& value)
 	return kZKError;
 }
 
-ZKErrorCode ZKClient::DeleteSync(const std::string& path) {
+ZKErrorCode ZKClient::Delete(const std::string& path) {
 	int rc = zoo_delete(zhandle_, path.c_str(), -1);
 	if (rc == ZOK) {
 		return kZKSucceed;
