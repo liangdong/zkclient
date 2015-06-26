@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <assert.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -96,6 +97,7 @@ int main(int argc, char** argv) {
 	// 所以不能依赖唯一临时路径标示自己，而是要使用路径的value唯一性来确认自身身份。
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
+	srand((unsigned)time(NULL));
 	snprintf(node_id, sizeof(node_id), "%ld-%ld-%d-%d", tv.tv_sec, tv.tv_usec, getpid(), rand());
 
 	// 不需要检查返回值，除非SESSION_EXPIRED才会失败，那也会被回调退出程序的
