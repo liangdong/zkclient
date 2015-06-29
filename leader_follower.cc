@@ -95,6 +95,8 @@ int main(int argc, char** argv) {
 	// 可能Create临时节点成功了而客户端认为失败，这样客户端重试会又建出一个临时节点，
 	// 如果仅仅依靠Create返回的临时节点名字作为判断是自身的依据，则可能导致该进程占据了leader的位置而自己又认为自己不是leader的极端情况，
 	// 所以不能依赖唯一临时路径标示自己，而是要使用路径的value唯一性来确认自身身份。
+	// 
+	// 注: 在分布式系统里，通过使用gethostname()来唯一标示一个物理节点.
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	srand((unsigned)time(NULL));
